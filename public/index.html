@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gas El Vecino</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #dce1e6; font-family: 'Segoe UI', sans-serif; } 
+        .main-container { max-width: 500px; margin: 0 auto; padding-top: 10px; padding-bottom: 30px; }
+        .card { border-radius: 16px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; padding: 15px; border-radius: 0 0 20px 20px; margin-bottom: 20px; }
+        .btn-qty { width: 50px; height: 50px; border-radius: 50%; font-size: 24px; font-weight: bold; }
+        .qty-display { font-size: 32px; font-weight: bold; width: 60px; text-align: center; }
+        .price-option { padding: 10px; border-radius: 12px; border: 2px solid #dee2e6; margin-bottom: 5px; cursor: pointer; text-align: center; transition: 0.2s; background-color: white; }
+        .price-option:hover { background-color: #f8f9fa; }
+        .price-option.active { background-color: #e7f1ff; border-color: #0d6efd; color: #0d6efd; font-weight: bold; }
+        #inputOtroPrecio { display: none; margin-top: 5px; text-align: center; font-weight: bold; }
+        .total-amount { font-size: 45px; font-weight: bold; color: #198754; text-align: center; }
+        .texto-ayuda { font-size: 0.85rem; color: #6c757d; display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="header-bg text-center">
+        <h3 class="mb-0 fw-bold">🚚 Gas El Vecino</h3>
+    </div>
+
+    <div class="container main-container">
+        
+        <div class="card p-4 mb-3">
+            <label class="form-label fw-bold text-secondary mb-0">1. IDENTIFICACIÓN DEL CLIENTE</label>
+            <span class="texto-ayuda mb-3">Ingrese la cédula del comprador. <strong>Si el cliente no está en el sistema, haga clic en el botón amarillo.</strong></span>
+            
+            <input type="tel" class="form-control form-control-lg mb-3 text-center border-primary" id="cedulaInput" placeholder="Ej: 1001234567" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 13);">
+            
+            <button class="btn btn-primary w-100 fw-bold py-2 mb-2" onclick="buscarCliente()">
+                🔍 VERIFICAR CÉDULA
+            </button>
+            
+            <button class="btn btn-warning btn-sm w-100 fw-bold text-dark shadow-sm mt-1" onclick="mostrarFormulario()">
+                ➕ Registrar Nuevo Cliente
+            </button>
+            
+            <div id="infoCliente" class="alert alert-light border text-center mt-3 mb-0 d-none"></div>
+        </div>
+
+        <div class="card p-4 mb-3">
+            <label class="form-label fw-bold text-secondary text-center w-100 mb-0">2. CANTIDAD Y PRECIO</label>
+            <span class="texto-ayuda text-center mb-4">Seleccione la cantidad de cilindros y el precio a cobrar.</span>
+            
+            <label class="fw-bold text-dark text-center w-100 d-block mb-2">Cantidad a vender:</label>
+            <div class="d-flex justify-content-center align-items-center mb-4">
+                <button class="btn btn-outline-secondary btn-qty" onclick="cambiarCantidad(-1)">-</button>
+                <span id="qtyDisplay" class="qty-display mx-3">1</span>
+                <button class="btn btn-outline-primary btn-qty" onclick="cambiarCantidad(1)">+</button>
+            </div>
+
+            <hr>
+
+            <label class="fw-bold text-dark text-center w-100 d-block mb-3">Precio unitario:</label>
+            <div class="row g-2 mb-3">
+                <div class="col-3"><div class="price-option" onclick="setPrecio(1.60, this)"><small>Bodega</small><br>$1.60</div></div>
+                <div class="col-3"><div class="price-option active" onclick="setPrecio(3.50, this)"><small>Normal</small><br>$3.50</div></div>
+                <div class="col-3"><div class="price-option" onclick="setPrecio(3.75, this)"><small>Lejos</small><br>$3.75</div></div>
+                <div class="col-3"><div class="price-option" onclick="activarOtroPrecio(this)"><small>Otro</small><br>$$$</div></div>
+            </div>
+            
+            <input type="number" id="inputOtroPrecio" class="form-control form-control-lg border-primary" placeholder="Ej: 4.00" oninput="validarPrecioManual(this)">
+
+            <hr class="mt-4">
+            
+            <div class="text-center bg-light p-3 rounded border">
+                <small class="text-muted fw-bold">TOTAL A PAGAR</small>
+                <div class="total-amount mt-2">$<span id="totalDisplay">3.50</span></div>
+            </div>
+
+            <button class="btn btn-success w-100 fw-bold py-3 mt-4 shadow fs-5" onclick="facturar()">
+                💸 COBRAR Y FACTURAR
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalRegistro" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-warning">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold">➕ Registrar Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="fw-bold mb-1">Cédula o RUC <span class="text-danger">*</span></label>
+                    <input type="tel" id="regCedula" class="form-control mb-3" placeholder="Mínimo 10 dígitos" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 13);">
+
+                    <label class="fw-bold mb-1">Nombre Completo <span class="text-danger">*</span></label>
+                    <input type="text" id="regNombre" class="form-control mb-3" placeholder="Ej: Juan Perez">
+                    
+                    <label class="fw-bold mb-1">Dirección <span class="text-danger">*</span></label>
+                    <input type="text" id="regDireccion" class="form-control mb-3" placeholder="Ej: Barrio Los Ceibos">
+                    
+                    <label class="fw-bold mb-1">Teléfono (Importante):</label>
+                    <input type="tel" id="regTelefono" class="form-control mb-3" placeholder="Ej: 0991234567" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);">
+
+                    <label class="fw-bold mb-1">Correo electrónico (Opcional):</label>
+                    <input type="email" id="regEmail" class="form-control mb-2" placeholder="Ej: correo@gmail.com">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning w-100 fw-bold py-2 shadow-sm" onclick="guardarCliente()">Guardar y Usar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let clienteActual = null;
+        let cantidad = 1;
+        let precioUnitario = 3.50;
+
+        function cambiarCantidad(delta) {
+            if (cantidad + delta > 0) {
+                cantidad += delta;
+                document.getElementById('qtyDisplay').innerText = cantidad;
+                calcularTotal();
+            }
+        }
+
+        function setPrecio(precio, elemento) {
+            precioUnitario = precio;
+            document.getElementById('inputOtroPrecio').style.display = 'none';
+            actualizarEstilos(elemento);
+            calcularTotal();
+        }
+
+        function activarOtroPrecio(elemento) {
+            document.getElementById('inputOtroPrecio').style.display = 'block';
+            document.getElementById('inputOtroPrecio').value = '';
+            document.getElementById('inputOtroPrecio').focus();
+            precioUnitario = 0; 
+            actualizarEstilos(elemento);
+            calcularTotal();
+        }
+
+        function validarPrecioManual(input) {
+            // Elimina símbolos de más, menos o basura. Solo deja números y el punto.
+            input.value = input.value.replace(/[^0-9.]/g, '');
+            precioUnitario = parseFloat(input.value) || 0;
+            calcularTotal();
+        }
+
+        function actualizarEstilos(elemento) {
+            document.querySelectorAll('.price-option').forEach(el => el.classList.remove('active'));
+            elemento.classList.add('active');
+        }
+
+        function calcularTotal() {
+            const total = (cantidad * precioUnitario).toFixed(2);
+            document.getElementById('totalDisplay').innerText = total;
+        }
+
+        async function buscarCliente() {
+            const cedula = document.getElementById('cedulaInput').value.trim();
+            if(!cedula) return alert("❌ Escriba la cédula antes de verificar.");
+            if(cedula.length < 10) return alert("❌ Cédula incompleta (Mínimo 10 dígitos).");
+            
+            const info = document.getElementById('infoCliente');
+            
+            try {
+                const res = await fetch(`/api/cliente/${cedula}`);
+                const data = await res.json();
+                
+                info.classList.remove('d-none');
+                if(data.exito) {
+                    clienteActual = data.datos;
+                    
+                    // Mostramos toda la info recolectada
+                    let htmlExtra = `<small>📍 ${data.datos.direccion}</small>`;
+                    if(data.datos.telefono) htmlExtra += `<br><small>📱 Tel: ${data.datos.telefono}</small>`;
+                    if(data.datos.email) htmlExtra += `<br><small>📧 Correo: ${data.datos.email}</small>`;
+
+                    info.className = 'alert alert-success mt-3 mb-0 text-start';
+                    info.innerHTML = `<strong class="fs-5">✅ ${data.datos.nombre}</strong><br>${htmlExtra}`;
+                } else {
+                    clienteActual = null;
+                    info.className = 'alert alert-danger mt-3 mb-0 fw-bold';
+                    info.innerHTML = '❌ No encontrado. Regístrelo en el botón amarillo.';
+                }
+            } catch(e) { alert("Error de conexión con el sistema."); }
+        }
+
+        const modalRegistro = new bootstrap.Modal(document.getElementById('modalRegistro'));
+        
+        function mostrarFormulario() { 
+            const cedulaEscrita = document.getElementById('cedulaInput').value.trim();
+            document.getElementById('regCedula').value = cedulaEscrita;
+            modalRegistro.show(); 
+        }
+        
+        async function guardarCliente() {
+            const cedula = document.getElementById('regCedula').value.trim();
+            const nombre = document.getElementById('regNombre').value.trim();
+            const direccion = document.getElementById('regDireccion').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const telefono = document.getElementById('regTelefono').value.trim();
+
+            if(!cedula || (cedula.length !== 10 && cedula.length !== 13)) return alert("❌ La cédula debe tener exactamente 10 o 13 dígitos.");
+            if(!nombre) return alert("❌ El nombre es obligatorio.");
+            if(!direccion) return alert("❌ La dirección es obligatoria.");
+            if(email.length > 0 && !email.includes("@")) return alert("❌ Correo inválido.");
+
+            try {
+                const res = await fetch('/api/registrar_cliente', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ cedula, nombre, email, direccion, telefono }) 
+                });
+                
+                const data = await res.json();
+                if(data.exito) {
+                    modalRegistro.hide();
+                    document.getElementById('regCedula').value = '';
+                    document.getElementById('regNombre').value = '';
+                    document.getElementById('regEmail').value = '';
+                    document.getElementById('regDireccion').value = '';
+                    document.getElementById('regTelefono').value = '';
+                    
+                    document.getElementById('cedulaInput').value = cedula;
+                    buscarCliente(); 
+                } else { alert("Error: " + data.mensaje); }
+            } catch(e) {
+                alert("Error de conexión al guardar.");
+            }
+        }
+
+        async function facturar() {
+            if(!clienteActual) return alert("⚠️ Debe VERIFICAR y tener un cliente válido antes de cobrar.");
+            if(precioUnitario < 1.00) return alert("❌ Error: El precio unitario ingresado es inválido. No se puede cobrar $0.00.");
+
+            const total = (cantidad * precioUnitario).toFixed(2);
+            if(!confirm(`¿Desea facturar $${total} a ${clienteActual.nombre}?`)) return;
+
+            try {
+                const res = await fetch('/api/crear_factura', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        cliente: clienteActual,
+                        producto: "Tanque Gas Doméstico",
+                        cantidad, precioUnitario, total
+                    })
+                });
+                const data = await res.json();
+                if(data.exito) {
+                    if(confirm("✅ ¡Venta Exitosa! ¿Desea ver el recibo para enviarlo?")) window.open(data.pdf_url, '_blank');
+                    
+                    cantidad = 1; 
+                    document.getElementById('qtyDisplay').innerText = 1;
+                    document.getElementById('cedulaInput').value = '';
+                    document.getElementById('infoCliente').classList.add('d-none');
+                    document.getElementById('inputOtroPrecio').style.display = 'none';
+                    document.getElementById('inputOtroPrecio').value = '';
+                    setPrecio(3.50, document.querySelectorAll('.price-option')[1]);
+                    clienteActual = null;
+                }
+            } catch(e) { alert("Ocurrió un error al procesar la factura."); }
+        }
+    </script>
+</body>
+</html>
